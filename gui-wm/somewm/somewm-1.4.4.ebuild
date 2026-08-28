@@ -24,6 +24,7 @@ HOMEPAGE="https://somewm.org https://github.com/trip-zip/somewm"
 
 LICENSE="GPL-3"
 SLOT="0"
+IUSE="+pam"
 
 REQUIRED_USE="${LUA_REQUIRED_USE}"
 
@@ -47,6 +48,7 @@ RDEPEND="
 	x11-libs/libxkbcommon
 	x11-libs/pango
 	x11-libs/xcb-util-wm
+	pam? ( sys-libs/pam )
 "
 DEPEND="
 	${RDEPEND}
@@ -64,6 +66,9 @@ pkg_setup() {
 }
 
 src_configure() {
+	local emesonargs=(
+		$(meson_feature pam)
+	)
 	meson_src_configure
 }
 
