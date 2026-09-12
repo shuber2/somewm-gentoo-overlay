@@ -5,7 +5,7 @@ EAPI=8
 
 LUA_COMPAT=( lua-5.4 luajit )
 
-inherit meson lua-single
+inherit meson lua-single optfeature
 
 if [[ ${PV} == *9999* ]]; then
 	inherit git-r3
@@ -80,4 +80,7 @@ pkg_postinst() {
 	einfo "  somewm-session"
 	einfo ""
 	einfo "Further details at: https://somewm.org/docs/intro"
+
+	optfeature_header "There are optional packages that may be useful with somewm:"
+	optfeature "desktop portal backend" sys-apps/xdg-desktop-portal-gtk
 }
