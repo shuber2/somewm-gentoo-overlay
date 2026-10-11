@@ -83,4 +83,5 @@ pkg_postinst() {
 
 	optfeature_header "There are optional packages that may be useful with somewm:"
 	optfeature "desktop portal backend" sys-apps/xdg-desktop-portal-gtk
+	optfeature "screenshot/screencast portal backend" gui-libs/xdg-desktop-portal-wlr
 }
