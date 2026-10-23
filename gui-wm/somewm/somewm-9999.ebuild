@@ -10,19 +10,22 @@ inherit meson lua-single optfeature
 if [[ ${PV} == *9999* ]]; then
 	inherit git-r3
 	EGIT_REPO_URI="https://github.com/trip-zip/${PN}.git"
-
-	if [[ ${PV} == 1.4.* ]]; then
-		EGIT_BRANCH="release/1.4"
-	fi
 else
+	# somewm links a patched wlroots statically (subprojects/wlroots.wrap)
+	WLROOTS_PV="0.20.2"
+
 	KEYWORDS="~amd64"
-	SRC_URI="https://github.com/trip-zip/${PN}/archive/refs/tags/v${PV}.tar.gz -> ${P}.tar.gz"
+	SRC_URI="
+		https://github.com/trip-zip/${PN}/archive/refs/tags/v${PV}.tar.gz -> ${P}.tar.gz
+		https://gitlab.freedesktop.org/wlroots/wlroots/-/releases/${WLROOTS_PV}/downloads/wlroots-${WLROOTS_PV}.tar.gz
+	"
 fi
 
 DESCRIPTION="An AwesomeWM-compatible dynamic floating and tiling Wayland compositor"
 HOMEPAGE="https://somewm.org https://github.com/trip-zip/somewm"
 
-LICENSE="GPL-3"
+# GPL-3: somewm, MIT: bundled wlroots, ZLIB: bundled clay.h
+LICENSE="GPL-3 MIT ZLIB"
 SLOT="0"
 IUSE="+pam"
 
@@ -31,22 +34,26 @@ REQUIRED_USE="${LUA_REQUIRED_USE}"
 RDEPEND="
 	${LUA_DEPS}
 	$(lua_gen_cond_dep 'dev-lua/lgi[${LUA_USEDEP}]')
+	>=dev-libs/wayland-1.24.0
 	dev-libs/glib:2
 	dev-libs/libffi
-	dev-libs/libinput
-	dev-libs/wayland
-	dev-libs/wayland-protocols
-	|| (
-		gui-libs/wlroots:0.19
-		gui-libs/wlroots:0.20
-	)
+	>=dev-libs/libinput-1.19.0:=
+	>=gnome-base/librsvg-2.52:2
+	>=media-libs/libdisplay-info-0.2.0:=
+	media-libs/libglvnd
+	>=media-libs/mesa-24.1.0_rc1[opengl]
 	sys-apps/dbus
+	sys-auth/seatd:=
+	virtual/libudev
 	x11-base/xwayland
 	x11-libs/cairo[X]
 	x11-libs/gdk-pixbuf:2
-	x11-libs/libdrm
-	x11-libs/libxkbcommon
+	>=x11-libs/libdrm-2.4.129
+	>=x11-libs/libxkbcommon-1.8.0
+	x11-libs/libxcb:=
+	>=x11-libs/pixman-0.46.0
 	x11-libs/pango
+	x11-libs/xcb-util-renderutil
 	x11-libs/xcb-util-wm
 	pam? ( sys-libs/pam )
 "
@@ -55,9 +62,11 @@ DEPEND="
 "
 BDEPEND="
 	${LUA_DEPS}
+	>=dev-libs/wayland-protocols-1.47
 	dev-build/meson
 	dev-build/ninja
 	dev-util/wayland-scanner
+	sys-apps/hwdata
 	virtual/pkgconfig
 "
 
@@ -65,11 +74,35 @@ pkg_setup() {
 	lua-single_pkg_setup
 }
 
+src_unpack() {
+	# meson runs with --wrap-mode nodownload, so the wlroots wrap has to be
+	# provided here; meson verifies the tarball and applies the wrap's
+	# diff_files itself
+	if [[ ${PV} == *9999* ]]; then
+		git-r3_src_unpack
+		meson subprojects download --sourcedir "${S}" wlroots || die
+	else
+		unpack ${P}.tar.gz
+		mkdir -p "${S}"/subprojects/packagecache || die
+		cp "${DISTDIR}"/wlroots-${WLROOTS_PV}.tar.gz "${S}"/subprojects/packagecache/ || die
+	fi
+}
+
 src_configure() {
 	local emesonargs=(
+		-Dlua_pkg="${ELUA}"
 		$(meson_feature pam)
+		# avoid automagic deps in the bundled wlroots
+		-Dwlroots:color-management=disabled
+		-Dwlroots:libliftoff=disabled
+		-Dwlroots:xcb-errors=disabled
 	)
 	meson_src_configure
+}
+
+src_install() {
+	# keep the static wlroots, its headers and .pc files out of the image
+	meson_src_install --skip-subprojects
 }
 
 pkg_postinst() {
