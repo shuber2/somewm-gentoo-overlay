@@ -36,10 +36,7 @@ RDEPEND="
 	dev-libs/libinput
 	dev-libs/wayland
 	dev-libs/wayland-protocols
-	|| (
-		gui-libs/wlroots:0.19
-		gui-libs/wlroots:0.20
-	)
+	gui-libs/wlroots:0.20[libinput,X]
 	sys-apps/dbus
 	x11-base/xwayland
 	x11-libs/cairo[X]
@@ -67,7 +64,12 @@ pkg_setup() {
 
 src_configure() {
 	local emesonargs=(
+		-Dlua_pkg="${ELUA}"
 		$(meson_feature pam)
+		# auto picks 0.20 whenever its dependency floors are met, which they
+		# always are here; 0.19 would also need >=0.19.3 (KEYPAD_SLIDE)
+		-Dwlroots_version=0.20
+		-Dxwayland=enabled
 	)
 	meson_src_configure
 }
